@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.5
+	github.com/mattn/go-sqlite3 v1.14.28
 	golang.design/x/clipboard v0.7.0
 )
 
@@ -27,7 +28,7 @@ require (
 	golang.org/x/exp/shiny v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
 	golang.org/x/image v0.14.0 // indirect
 	golang.org/x/mobile v0.0.0-20231127183840-76ac6878050a // indirect
-	golang.org/x/sync v0.13.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 )

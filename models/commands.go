@@ -1,3 +1,9 @@
 package models
 
-type workspaceList string
+import tea "github.com/charmbracelet/bubbletea"
+
+type workspacelistcmd string
+type messagecallback struct {
+	message  string
+	callback tea.Cmd
+}

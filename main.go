@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"workspaces-cli/models"
@@ -19,11 +20,11 @@ func main() {
 	if err != nil {
 		fatalf("load workspaces: %w", err)
 	}
-	m, err := models.NewModel(w)
+	m, err := models.NewModel(context.Background(), w, os.ExpandEnv("$HOME/development/workspaces/workspaces.sql"))
 	if err != nil {
 		fatalf("new model: %w", err)
 	}
-
+	defer m.Cleanup()
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
 		fatalf("run error: %w", err)

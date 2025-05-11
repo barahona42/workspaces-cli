@@ -31,7 +31,7 @@ func (w *Workspace) ModTime() time.Time {
 	return info.ModTime()
 }
 func isIgnored(d os.DirEntry) bool {
-	return d.Name() == ".DS_Store"
+	return d.Name() == ".DS_Store" || !d.IsDir()
 }
 
 func Load(path string) ([]Workspace, error) {
