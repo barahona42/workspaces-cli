@@ -14,10 +14,12 @@ import (
 )
 
 type Model struct {
+	mainPane   string
+	footerPane string
+
 	workspaces []workspaces.Workspace
 	maxnamelen int
 	cursor     int
-	display    string
 	maxrows    int
 
 	filterValue        string
@@ -88,6 +90,21 @@ func (m *Model) generateWorkspaceString(pos, namepadding int, selected bool, w w
 	return fmt.Sprintf("%s\t%s   %s   %s   %s", cursor, index, name, modtime, path)
 }
 
+func (m *Model) generateFooter() string {
+	b := strings.Builder{}
+	if m.isFilterActive || len(m.filterValue) > 0 {
+		b.WriteString(fmt.Sprintf("\033[33m↳ FILTER > %s\033[0m\n", m.filterValue))
+	} else {
+		b.WriteString("\n")
+	}
+	b.WriteString("\033[90m")
+	b.WriteString("   type 'c' to copy selected path to clipboard\n")
+	b.WriteString("   type 'o' to open selected workspace in vscode\n")
+	b.WriteString("\033[0m\n")
+	b.WriteString("\n")
+	return b.String()
+}
+
 func (m *Model) generateWorkspacesString() string {
 	ws := m.getWorkspaces()
 	strs := make([]func(int) string, len(ws))
@@ -108,23 +125,11 @@ func (m *Model) generateWorkspacesString() string {
 			b.WriteString(".\n")
 		}
 	}
-	// for i := 0; i < m.maxrows && i+m.cursor < len(strs); i++ {
-	// 	b.WriteString(strs[i+m.cursor](*maxnamelen) + "\n")
-	// }
-	b.WriteString("\n\n----------\n")
-	if m.isFilterActive || len(m.filterValue) > 0 {
-		b.WriteString(fmt.Sprintf("\033[33m↳ FILTER > %s\033[0m", m.filterValue))
-	}
-	b.WriteString("\033[90m\n")
-	b.WriteString("   type 'c' to copy selected path to clipboard\n")
-	b.WriteString("   type 'o' to open selected workspace in vscode\n")
-	b.WriteString("\033[0m\n")
-	b.WriteString("\n")
 	return b.String()
 }
 
 func (m *Model) renderWorkspaces() tea.Msg {
-	return workspacelistcmd(m.generateWorkspacesString())
+	return renderpanescmd{main: m.generateWorkspacesString(), footer: m.generateFooter()}
 }
 
 func (m *Model) setFilteredWorkspaces(filter string) {
@@ -184,8 +189,11 @@ func (m *Model) handleKeyString(key string) (tea.Model, tea.Cmd) {
 	case "c": // clip workspace path
 		return m, func() tea.Msg {
 			clipboard.Write(clipboard.FmtText, []byte(m.workspaces[m.cursor].Path()))
-			return messagecallback{
-				message: "📋 copied message to clipboard",
+			return renderpaneswithcallbackcmd{
+				renderpanescmd: renderpanescmd{
+					main:   "📋 copied message to clipboard",
+					footer: m.generateFooter(),
+				},
 				callback: func() tea.Msg {
 					time.Sleep(MESSAGE_TIMEOUT)
 					return m.renderWorkspaces()
@@ -199,8 +207,11 @@ func (m *Model) handleKeyString(key string) (tea.Model, tea.Cmd) {
 				exec.Command("code", m.workspaces[m.cursor].Path()).Run()
 				done <- struct{}{}
 			}()
-			return messagecallback{
-				message: "💻 opening workspace",
+			return renderpaneswithcallbackcmd{
+				renderpanescmd: renderpanescmd{
+					main:   "💻 opening workspace",
+					footer: m.generateFooter(),
+				},
 				callback: func() tea.Msg {
 					time.Sleep(MESSAGE_TIMEOUT)
 					<-done
@@ -234,6 +245,14 @@ func (m *Model) handleKeyMsg(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
+func (m *Model) formatView() string {
+	b := strings.Builder{}
+	b.WriteString(m.mainPane)
+	b.WriteString("\n----------\n")
+	b.WriteString(m.footerPane)
+	return b.String()
+}
+
 func (m *Model) Cleanup() error {
 	return errors.Join(db.Close())
 }
@@ -241,20 +260,22 @@ func (m *Model) Cleanup() error {
 // interface
 func (m Model) Update(rawmsg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := rawmsg.(type) {
-	case workspacelistcmd:
-		m.display = string(msg)
-	case string:
-		m.display = msg
-	case messagecallback:
-		m.display = msg.message
+	case renderpanescmd:
+		m.mainPane = msg.main
+		m.footerPane = msg.footer
+	case renderpaneswithcallbackcmd:
+		m.mainPane = msg.main
+		m.footerPane = msg.footer
 		return m, msg.callback
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
+	case string:
+		panic(fmt.Sprintf("string type deprecated: '%s'", msg))
 	}
 	return m, nil
 }
 func (m Model) View() string {
-	return m.display
+	return m.formatView()
 }
 func (m Model) Init() tea.Cmd {
 	return func() tea.Msg { return m.renderWorkspaces() }
