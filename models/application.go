@@ -43,7 +43,7 @@ type Application struct {
 	filterCursor       int
 	filterValue        string
 	isFilterActive     bool
-	filteredWorkspaces []workspaces.Workspace
+	filteredWorkspaces []*workspaces.Workspace
 
 	// command mode fields
 	commands      []string
@@ -53,7 +53,6 @@ type Application struct {
 func (m *Application) resetMode() {
 	switch m.mode {
 	case mode_filter:
-		m.cursor = m.filterCursor
 		m.filterCursor = 0
 		m.filterValue = ""
 		m.isFilterActive = false
@@ -203,17 +202,10 @@ func (m *Application) generateCommandSelectString() string {
 }
 
 func (m *Application) generateFilterWorkspacesString() string {
-	matchName := func(name string) bool {
-		return strings.EqualFold(name, strings.ToLower(m.filterValue)) ||
-			strings.Contains(strings.ToLower(name), strings.ToLower(m.filterValue))
-	}
-	matchModTime := func(modtime time.Time) bool {
-		return strings.Contains(modtime.Format(time.DateOnly), m.filterValue)
-	}
-	m.filteredWorkspaces = make([]workspaces.Workspace, 0, len(m.workspaces))
+	m.filteredWorkspaces = make([]*workspaces.Workspace, 0, len(m.workspaces))
 	for i := range m.workspaces {
-		if matchName(m.workspaces[i].DirEntry.Name()) || matchModTime(m.workspaces[i].ModTime()) {
-			m.filteredWorkspaces = append(m.filteredWorkspaces, m.workspaces[i])
+		if isFuzzyWorkspaceMatch(&m.workspaces[i], m.filterValue) {
+			m.filteredWorkspaces = append(m.filteredWorkspaces, &m.workspaces[i])
 		}
 	}
 	strs := make([]func(int) string, len(m.filteredWorkspaces))
@@ -222,7 +214,7 @@ func (m *Application) generateFilterWorkspacesString() string {
 			m.maxnamelen = l
 		}
 		strs[i] = func(namepadding int) string {
-			return m.generateWorkspaceString(i+1, namepadding, m.filterCursor == i, m.filteredWorkspaces[i])
+			return m.generateWorkspaceString(i+1, namepadding, m.filterCursor == i, *m.filteredWorkspaces[i])
 		}
 
 	}
@@ -250,7 +242,7 @@ func (m *Application) generateWorkspacesString() string {
 
 	}
 	b := strings.Builder{}
-	for i := 0; i < m.maxrows; i++ {
+	for i := range m.maxrows {
 		if i+m.cursor < len(strs) {
 			b.WriteString(strs[i+m.cursor](m.maxnamelen) + "\n")
 		} else {
@@ -334,7 +326,13 @@ func (m *Application) commandMode_handleKeyMsg(ctx context.Context, key tea.KeyM
 
 func (m *Application) filterMode_handleKeyMsg(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch key.Type {
-	case tea.KeyEsc, tea.KeyEnter:
+	case tea.KeyEsc:
+		m.resetMode()
+		return m, m.defaultRenderer
+	case tea.KeyEnter:
+		// set the cursor
+		for m.cursor = 0; m.cursor < len(m.workspaces) && &m.workspaces[m.cursor] != m.filteredWorkspaces[m.filterCursor]; m.cursor++ {
+		}
 		m.resetMode()
 		return m, m.defaultRenderer
 	case tea.KeyBackspace:
