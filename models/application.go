@@ -50,6 +50,17 @@ type Application struct {
 	commandCursor int
 }
 
+func (m *Application) increaseMaxRows() {
+	if m.maxrows < len(m.workspaces)-1 {
+		m.maxrows++
+	}
+}
+func (m *Application) decreaseMaxRows() {
+	if m.maxrows > 1 {
+		m.maxrows--
+	}
+}
+
 func (m *Application) resetMode() {
 	switch m.mode {
 	case mode_filter:
@@ -166,11 +177,11 @@ func (m *Application) generateWorkspaceString(pos, namepadding int, selected boo
 		path = fmt.Sprintf("\033[90m%s\033[0m", w.Path())
 		index = fmt.Sprintf("\033[1;34m%-3d\033[0m", pos)
 	} else {
-		cursor = " "
+		cursor = "  "
 		name = fmt.Sprintf("%-*s", namepadding, w.DirEntry.Name())
 		index = fmt.Sprintf("\033[00m%-3d\033[0m", pos)
 	}
-	return fmt.Sprintf("%s\t%s   %s   %s   %s", cursor, index, name, modtime, path)
+	return fmt.Sprintf("%s   %s   %s   %s   %s", cursor, index, name, modtime, path)
 }
 
 func (m *Application) generateFooter() string {
@@ -273,7 +284,7 @@ func (m *Application) activeCommandHandler(ctx context.Context) tea.Cmd {
 			if len(data) == 0 {
 				return renderpaneswithcallbackcmd{
 					renderpanescmd: renderpanescmd{
-						main:   "\t\t❎ no checkpoint data received",
+						main:   "      ❎ no checkpoint data received",
 						footer: m.generateFooter()},
 					callback: func() tea.Msg {
 						m.resetMode()
@@ -289,7 +300,7 @@ func (m *Application) activeCommandHandler(ctx context.Context) tea.Cmd {
 			// the returned data will be the the result of the write op
 			return renderpaneswithcallbackcmd{
 				renderpanescmd: renderpanescmd{
-					main:   "\t\t✅ checkpoint inserted",
+					main:   "      ✅ checkpoint inserted",
 					footer: m.generateFooter()},
 				callback: func() tea.Msg {
 					m.resetMode()
@@ -330,7 +341,7 @@ func (m *Application) filterMode_handleKeyMsg(key tea.KeyMsg) (tea.Model, tea.Cm
 		m.resetMode()
 		return m, m.defaultRenderer
 	case tea.KeyEnter:
-		// set the cursor
+		// keep selected item in filter mode over to default mode
 		for m.cursor = 0; m.cursor < len(m.workspaces) && &m.workspaces[m.cursor] != m.filteredWorkspaces[m.filterCursor]; m.cursor++ {
 		}
 		m.resetMode()
@@ -369,6 +380,12 @@ func (m *Application) defaultMode_handleKeyMsg(key tea.KeyMsg) (tea.Model, tea.C
 	switch key.String() {
 	case "q":
 		return m, tea.Quit
+	case "+":
+		m.increaseMaxRows()
+		return m, m.defaultRenderer
+	case "-":
+		m.decreaseMaxRows()
+		return m, m.defaultRenderer
 	case "c": // clip workspace path
 		return m, func() tea.Msg {
 			b := strings.Builder{}
