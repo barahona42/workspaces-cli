@@ -1,0 +1,1 @@
+create table if not exists workspaces(id text, name text primary key, path text);

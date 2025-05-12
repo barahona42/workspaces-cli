@@ -1,0 +1,1 @@
+create table if not exists checkpoints(id text primary key, workspaceid text, value text, date integer);

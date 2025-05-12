@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"workspaces-cli/models"
+	"workspaces-cli/pkg/editors"
 	"workspaces-cli/pkg/workspaces"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,7 +21,11 @@ func main() {
 	if err != nil {
 		fatalf("load workspaces: %w", err)
 	}
-	m, err := models.NewModel(context.Background(), w, os.ExpandEnv("$HOME/development/workspaces/workspaces.sql"))
+	m, err := models.NewModel(
+		context.Background(),
+		w,
+		os.ExpandEnv("$HOME/development/workspaces/workspaces.sql"),
+		editors.Helix{})
 	if err != nil {
 		fatalf("new model: %w", err)
 	}

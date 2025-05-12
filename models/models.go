@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"slices"
 	"time"
-	db "workspaces-cli/models/database"
+	"workspaces-cli/models/db"
+	"workspaces-cli/pkg/editors"
 	"workspaces-cli/pkg/workspaces"
 
 	"golang.design/x/clipboard"
@@ -57,7 +58,7 @@ func sortWorkspaces(w []workspaces.Workspace) []workspaces.Workspace {
 	return ww
 }
 
-func NewModel(ctx context.Context, w []workspaces.Workspace, dbfile string) (*Model, error) {
+func NewModel(ctx context.Context, w []workspaces.Workspace, dbfile string, editor editors.Editor) (*Application, error) {
 	if err := clipboard.Init(); err != nil {
 		return nil, fmt.Errorf("initialize clipboard: %w", err)
 	}
@@ -65,5 +66,9 @@ func NewModel(ctx context.Context, w []workspaces.Workspace, dbfile string) (*Mo
 		return nil, fmt.Errorf("connect db: %w", err)
 	}
 	// TODO: terminal height for maxrows
-	return &Model{workspaces: sortWorkspaces(w), maxrows: 20}, nil
+	return &Application{
+		workspaces: sortWorkspaces(w),
+		maxrows:    10,
+		commands:   []string{"add_checkpoint", "view_checkpoints"},
+		editor:     editor}, nil
 }

@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.5
+	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.28
 	golang.design/x/clipboard v0.7.0
 )

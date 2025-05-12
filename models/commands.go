@@ -1,6 +1,8 @@
 package models
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 // renderpanescmd: base command
 type renderpanescmd struct {
@@ -12,4 +14,12 @@ type renderpanescmd struct {
 type renderpaneswithcallbackcmd struct {
 	renderpanescmd
 	callback tea.Cmd
+}
+
+type addcheckpointcmd string
+
+type viewcheckpointscmd string
+
+type errormessage struct {
+	err error
 }
