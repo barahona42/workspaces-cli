@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 	"workspaces-cli/models/db"
+	"workspaces-cli/models/modes"
 	"workspaces-cli/pkg/editors"
 	"workspaces-cli/pkg/textcolor"
 	"workspaces-cli/pkg/workspaces"
@@ -17,16 +18,8 @@ import (
 	"golang.design/x/clipboard"
 )
 
-type inputmode = int
-
-const (
-	mode_default       = iota // the base mode where the rendered items are workspaces
-	mode_filter               // user is inputting a filter and workspaces are being updated
-	mode_commandselect        // user is selecting from the command menu
-)
-
 type Application struct {
-	mode inputmode // user input mode. determines what's rendered and how input is handled
+	mode modes.InputMode // user input mode. determines what's rendered and how input is handled
 
 	editor editors.Editor
 	// TODO: mainPane needs to enforce persistent height throughout execution to prevent ghosting
@@ -63,24 +56,24 @@ func (m *Application) decreaseMaxRows() {
 
 func (m *Application) resetMode() {
 	switch m.mode {
-	case mode_filter:
+	case modes.FILTER:
 		m.filterCursor = 0
 		m.filterValue = ""
 		m.isFilterActive = false
 		clear(m.filteredWorkspaces)
-	case mode_commandselect:
+	case modes.SELECT_COMMAND:
 		m.commandCursor = 0
 	}
-	m.mode = mode_default
+	m.mode = modes.DEFAULT
 }
 
-func (m *Application) startMode(mode inputmode) {
+func (m *Application) startMode(mode modes.InputMode) {
 	switch mode {
-	case mode_filter:
+	case modes.FILTER:
 		m.filterCursor = 0
 		m.filterValue = ""
 		m.isFilterActive = true
-	case mode_commandselect:
+	case modes.SELECT_COMMAND:
 		m.commandCursor = 0
 	}
 	m.mode = mode
@@ -187,7 +180,7 @@ func (m *Application) generateWorkspaceString(pos, namepadding int, selected boo
 func (m *Application) generateFooter() string {
 	b := strings.Builder{}
 	switch m.mode {
-	case mode_commandselect:
+	case modes.SELECT_COMMAND:
 		for i := range m.commands {
 			if m.commandCursor == i {
 				b.WriteString(" > " + m.commands[i] + "\n")
@@ -195,7 +188,7 @@ func (m *Application) generateFooter() string {
 				b.WriteString("   " + m.commands[i] + "\n")
 			}
 		}
-	case mode_filter:
+	case modes.FILTER:
 		b.WriteString(textcolor.Colorize(textcolor.YELLOW, fmt.Sprintf("↳ FILTER > %s", m.filterValue)) + "\n")
 		fallthrough
 	default:
@@ -430,10 +423,10 @@ func (m *Application) defaultMode_handleKeyMsg(key tea.KeyMsg) (tea.Model, tea.C
 			}
 		}
 	case "/": // enable filter mode
-		m.startMode(mode_filter)
+		m.startMode(modes.FILTER)
 		return m, m.filterRenderer
 	case ":": // enable command mode
-		m.startMode(mode_commandselect)
+		m.startMode(modes.SELECT_COMMAND)
 		return m, m.commandSelectRenderer
 	}
 	return m, nil
@@ -452,9 +445,9 @@ func (m *Application) handleKeyMsg(ctx context.Context, key tea.KeyMsg) (tea.Mod
 		return m, cmd
 	}
 	switch m.mode {
-	case mode_commandselect:
+	case modes.SELECT_COMMAND:
 		return m.commandMode_handleKeyMsg(ctx, key)
-	case mode_filter:
+	case modes.FILTER:
 		return m.filterMode_handleKeyMsg(key)
 	default:
 		return m.defaultMode_handleKeyMsg(key)
